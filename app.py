@@ -50,10 +50,12 @@ def main():
     uploaded_f = st.sidebar.file_uploader("Upload your Excel file", type=["csv"])
     selected_model = st.sidebar.selectbox("Choose your model", options=list(models.keys()))
     st.sidebar.title("Enhanced Dataset for Fine-Tuning: Upload ")
-    uploadedff = st.sidebar.file_uploader("Upload your Excel file", type=["csv"])
+    finetune = st.sidebar.file_uploader("Upload your Excel file", type=["csv"])
     
-    if uploadedff is not None:
-        df = pd.read_csv(uploadedff)
+    if finetunn is not None:
+        df = pd.read_csv(finetune)
+        
+        
 
     if uploaded_f is not None:
         try:
