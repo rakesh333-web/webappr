@@ -47,13 +47,13 @@ def main():
 
     # Sidebar UI for uploading file and selecting model
     st.sidebar.title("Model Selection and File Upload")
-    uploaded_f = st.sidebar.file_uploader("Upload your Excel file", type=["csv"])
+    uploaded_f = st.sidebar.file_uploader("Upload your Excel file", type=["csv"], key="testcase")
     selected_model = st.sidebar.selectbox("Choose your model", options=list(models.keys()))
     st.sidebar.title("Enhanced Dataset for Fine-Tuning: Upload ")
-    finetune = st.sidebar.file_uploader("Upload your Excel file", type=["csv"])
+    uploader_f2 = st.sidebar.file_uploader("Upload your Excel file", type=["csv"],key="fine_tuning_dataset")
     
-    if finetunn is not None:
-        df = pd.read_csv(finetune)
+    if uploader_f2 is not None:
+        df = pd.read_csv(uploader_f2)
         
         
 
