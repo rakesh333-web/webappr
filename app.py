@@ -53,9 +53,103 @@ def main():
     uploader_f2 = st.sidebar.file_uploader("Upload your Excel file", type=["csv"],key="fine_tuning_dataset")
     
     if uploader_f2 is not None:
+        
+        from huggingface_hub import login
+        login(token="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")
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+
+        model_id = "bandi333/gemma-Code-Instruct-Finetune-test-v0.0"
+        model = AutoModelForCausalLM.from_pretrained(model_id)
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
+        from datasets import Dataset
+        import pandas as pd
         df = pd.read_csv(uploader_f2)
+        dataset =  Dataset.from_pandas(df)
+        def generate_prompt(data_point):
+            """Gen. input text based on a prompt, task instruction, (context info.), and answer
+        
+            :param data_point: dict: Data point
+            :return: dict: tokenzed prompt
+            """
+            prefix_text = 'Below is an instruction that describes a task. Write a response that ' \
+                       'appropriately completes the request.\n\n'
+            # Samples with additional context into.
+            if data_point['input']:
+                text = f"""<start_of_turn>user {prefix_text} {data_point["instruction"]} here are the inputs {data_point["input"]} <end_of_turn>\n<start_of_turn>model{data_point["output"]} <end_of_turn>"""
+            # Without
+            else:
+                text = f"""<start_of_turn>user {prefix_text} {data_point["instruction"]} <end_of_turn>\n<start_of_turn>model{data_point["output"]} <end_of_turn>"""
+            return text
+        
+        # add the "prompt" column in the dataset
+        text_column = [generate_prompt(data_point) for data_point in dataset]
+        dataset = dataset.add_column("prompt", text_column)
+        dataset = dataset.shuffle(seed=1234)  # Shuffle dataset here
+        dataset = dataset.map(lambda samples: tokenizer(samples["prompt"]), batched=True)
+        dataset = dataset.train_test_split(test_size=0.2)
+        train_data = dataset["train"]
+        test_data = dataset["test"]
+        from transformers import TrainingArguments, Trainer
+        
+        training_args = TrainingArguments(
+            output_dir="./results",           
+            evaluation_strategy="epoch",       
+            learning_rate=2e-5,                 
+            per_device_train_batch_size=4,      
+            per_device_eval_batch_size=4,      
+            num_train_epochs=3,                
+            weight_decay=0.01,                 
+            save_total_limit=3,                 
+        )
+        import transformers
         
         
+        trainer = Trainer(
+            model=model,                          
+            train_dataset=train_data,
+            eval_dataset=test_data,
+             args=transformers.TrainingArguments(
+                per_device_train_batch_size=1,
+                gradient_accumulation_steps=4,
+                warmup_steps=0.03,
+                max_steps=100,
+                learning_rate=2e-4,
+                logging_steps=1,
+                output_dir="outputs",
+                save_strategy="epoch",
+            ),
+            data_collator=transformers.DataCollatorForLanguageModeling(tokenizer, mlm=False),
+                
+            
+        )
+        
+        
+        model.config.use_cache = False  # silence the warnings. Please re-enable for inference!
+        trainer.train()
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        
+        
+        model.save_pretrained("./fine-tuned-model")
+        tokenizer.save_pretrained("./fine-tuned-model")
+        from huggingface_hub import HfApi, Repository
+        
+        auth_token = "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"
+        
+        
+        local_dir = "./fine-tuned-model"
+        
+        
+        model_id = "bandi333/gemma-Code-Instruct-Finetune-test-v1.1"
+        
+        
+        repo = Repository(
+            local_dir=local_dir,         
+            clone_from=model_id,          
+            use_auth_token=auth_token      
+        )
+        
+        repo.push_to_hub()
 
     if uploaded_f is not None:
         try:
